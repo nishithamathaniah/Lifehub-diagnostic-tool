@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+*.log
+
+# SQLite runtime data — not part of the source tree
+server/data/
+
+# Editor/OS
+.DS_Store
