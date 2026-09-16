@@ -15,15 +15,21 @@ and Division** and **Four Operations of Fractions**.
 
 - **Server**: Node.js + TypeScript + Express, persisted via
   [Turso](https://turso.tech) (libSQL — SQLite-compatible, accessible over
-  the network). Locally it falls back to a plain SQLite file with zero
-  setup; in production it needs real Turso credentials because a
-  serverless function has no persistent local disk to keep a session's
-  data alive between requests (see *Deploying to Vercel* below).
+  the network) using `@libsql/client/web`, the pure HTTP/WebSocket build
+  with no native binary. Local dev and production both talk to the same
+  Turso database — a serverless function has no persistent local disk to
+  keep a session's data alive between requests, so there's no local-only
+  fallback (see *Deploying to Vercel* below for how to create the free-tier
+  database both need).
 - **Client**: React + TypeScript (Vite).
 - No auth — this is a pilot/demo build, not a deployment-ready product (see
   *Open questions* below, carried over from the design doc).
 
 ## Running it
+
+Needs a Turso database first (see *Deploying to Vercel* below for how to
+create the free one) — copy `server/.env.example` to `server/.env` and fill
+in `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`.
 
 ```bash
 npm install          # installs both workspaces
@@ -72,14 +78,20 @@ to it. To deploy the `server/` directory as its own Vercel project:
 4. Redeploy. The schema migration runs automatically on first request —
    no separate migration step needed.
 
-Without those two env vars set, the server falls back to a local SQLite
-file — which is what was causing the `FUNCTION_INVOCATION_FAILED` error on
-a bare deploy: a serverless function's filesystem is read-only outside
-`/tmp` and isn't shared across invocations, so there was nowhere durable
-to put that file, and (separately) the previous `better-sqlite3` version of
-this file used a native addon that isn't guaranteed to load in Vercel's
-runtime at all. Turso removes both problems by moving storage off the
-function entirely.
+Without those two env vars set, the server throws immediately on cold
+start (`db.ts` requires them) rather than silently falling back to
+something that would break just as badly — a serverless function's
+filesystem is read-only outside `/tmp` and isn't shared across
+invocations, so there's nowhere durable to put a local SQLite file anyway.
+
+Two separate things were causing `FUNCTION_INVOCATION_FAILED` on the first
+deploy attempts, in order: (1) `better-sqlite3` is a native addon that
+isn't guaranteed to load in Vercel's runtime, and (2) even `@libsql/client`'s
+*default* Node build statically pulls in a native `libsql` binary for its
+local-file support — which can fail to load the same way even when only
+used for a remote connection. Using `@libsql/client/web` (a pure
+HTTP/WebSocket build with no native code at all) removes that risk
+entirely — see `server/src/db.ts`.
 
 The client (`client/`) deploys as a normal static Vite app on its own
 Vercel project (or any static host). Set its `VITE_API_BASE_URL` env var

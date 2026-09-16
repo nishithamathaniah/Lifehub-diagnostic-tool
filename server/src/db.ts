@@ -1,26 +1,22 @@
-import { createClient } from "@libsql/client";
-import path from "node:path";
-import fs from "node:fs";
-import { fileURLToPath } from "node:url";
+import { createClient } from "@libsql/client/web";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// `@libsql/client/web` is the pure HTTP/WebSocket build — no native binary,
+// unlike the default Node build (which statically pulls in the native
+// `libsql` package for local-file support and can fail to load inside
+// Vercel's serverless runtime even when unused at runtime). It only talks
+// to a remote Turso database, so both local dev and production point at
+// the same one — see README "Deploying to Vercel" for how to create it.
+const url = process.env.TURSO_DATABASE_URL;
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-// Turso (libSQL) in production — a free-tier, network-accessible SQLite-compatible
-// database, since serverless functions have no persistent local disk to keep a
-// session's data alive between requests. Falls back to a local SQLite file with
-// zero setup for local dev (`npm run dev`) when no Turso credentials are set.
-const tursoUrl = process.env.TURSO_DATABASE_URL;
+if (!url || !authToken) {
+  throw new Error(
+    "TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set — see README's " +
+      "'Deploying to Vercel' section. For local dev, put them in server/.env."
+  );
+}
 
-const url = tursoUrl ?? (() => {
-  const dataDir = path.join(__dirname, "..", "data");
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  return `file:${path.join(dataDir, "lifehub.db")}`;
-})();
-
-export const db = createClient({
-  url,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+export const db = createClient({ url, authToken });
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS sessions (
