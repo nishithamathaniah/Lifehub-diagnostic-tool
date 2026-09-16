@@ -11,31 +11,39 @@ export interface SessionRow {
   state: string;
 }
 
-export function createSession(childName: string, grade: string): { id: string; state: SessionState } {
+export async function createSession(childName: string, grade: string): Promise<{ id: string; state: SessionState }> {
   const id = nanoid(10);
   const state = createInitialState();
-  db.prepare(
-    `INSERT INTO sessions (id, child_name, grade, created_at, status, state) VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, childName, grade, new Date().toISOString(), "in_progress", JSON.stringify(state));
+  await db.execute({
+    sql: `INSERT INTO sessions (id, child_name, grade, created_at, status, state) VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [id, childName, grade, new Date().toISOString(), "in_progress", JSON.stringify(state)],
+  });
   return { id, state };
 }
 
-export function getSessionRow(sessionId: string): SessionRow {
-  const row = db.prepare(`SELECT * FROM sessions WHERE id = ?`).get(sessionId) as SessionRow | undefined;
+export async function getSessionRow(sessionId: string): Promise<SessionRow> {
+  const result = await db.execute({ sql: `SELECT * FROM sessions WHERE id = ?`, args: [sessionId] });
+  const row = result.rows[0];
   if (!row) throw new Error(`Session ${sessionId} not found`);
-  return row;
+  return row as unknown as SessionRow;
 }
 
-export function getSessionState(sessionId: string): SessionState {
-  const row = getSessionRow(sessionId);
-  return JSON.parse(row.state) as SessionState;
+export async function getSessionState(sessionId: string): Promise<SessionState> {
+  const row = await getSessionRow(sessionId);
+  return JSON.parse(row.state as string) as SessionState;
 }
 
-export function saveSessionState(sessionId: string, state: SessionState, status?: string) {
+export async function saveSessionState(sessionId: string, state: SessionState, status?: string): Promise<void> {
   if (status) {
-    db.prepare(`UPDATE sessions SET state = ?, status = ? WHERE id = ?`).run(JSON.stringify(state), status, sessionId);
+    await db.execute({
+      sql: `UPDATE sessions SET state = ?, status = ? WHERE id = ?`,
+      args: [JSON.stringify(state), status, sessionId],
+    });
   } else {
-    db.prepare(`UPDATE sessions SET state = ? WHERE id = ?`).run(JSON.stringify(state), sessionId);
+    await db.execute({
+      sql: `UPDATE sessions SET state = ? WHERE id = ?`,
+      args: [JSON.stringify(state), sessionId],
+    });
   }
 }
 
@@ -60,19 +68,39 @@ export interface ResponseRecord {
   outcome: string | null;
 }
 
-export function insertResponse(r: Omit<ResponseRecord, "id">): ResponseRecord {
+export async function insertResponse(r: Omit<ResponseRecord, "id">): Promise<ResponseRecord> {
   const id = nanoid(12);
-  db.prepare(
-    `INSERT INTO responses (id, session_id, seq, topic_id, item_id, cpa, bloom, subskill, choice_id, correct, hesitation_before_start_ms, solving_duration_ms, answer_changes, pulse, is_reframe, reframe_of_seq, is_procedural_check, outcome)
-     VALUES (@id, @session_id, @seq, @topic_id, @item_id, @cpa, @bloom, @subskill, @choice_id, @correct, @hesitation_before_start_ms, @solving_duration_ms, @answer_changes, @pulse, @is_reframe, @reframe_of_seq, @is_procedural_check, @outcome)`
-  ).run({ id, ...r });
+  await db.execute({
+    sql: `INSERT INTO responses (id, session_id, seq, topic_id, item_id, cpa, bloom, subskill, choice_id, correct, hesitation_before_start_ms, solving_duration_ms, answer_changes, pulse, is_reframe, reframe_of_seq, is_procedural_check, outcome)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      r.session_id,
+      r.seq,
+      r.topic_id,
+      r.item_id,
+      r.cpa,
+      r.bloom,
+      r.subskill,
+      r.choice_id,
+      r.correct,
+      r.hesitation_before_start_ms,
+      r.solving_duration_ms,
+      r.answer_changes,
+      r.pulse,
+      r.is_reframe,
+      r.reframe_of_seq,
+      r.is_procedural_check,
+      r.outcome,
+    ],
+  });
   return { id, ...r };
 }
 
-export function updateResponseOutcome(id: string, outcome: string) {
-  db.prepare(`UPDATE responses SET outcome = ? WHERE id = ?`).run(outcome, id);
-}
-
-export function getResponses(sessionId: string): ResponseRecord[] {
-  return db.prepare(`SELECT * FROM responses WHERE session_id = ? ORDER BY seq ASC`).all(sessionId) as ResponseRecord[];
+export async function getResponses(sessionId: string): Promise<ResponseRecord[]> {
+  const result = await db.execute({
+    sql: `SELECT * FROM responses WHERE session_id = ? ORDER BY seq ASC`,
+    args: [sessionId],
+  });
+  return result.rows as unknown as ResponseRecord[];
 }

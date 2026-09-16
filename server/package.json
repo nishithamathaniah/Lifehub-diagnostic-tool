@@ -10,13 +10,12 @@
     "simulate": "tsx scripts/simulate.ts"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
+    "@libsql/client": "^0.14.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "nanoid": "^5.0.7"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.9",

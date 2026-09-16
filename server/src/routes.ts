@@ -17,20 +17,20 @@ import { getTopic } from "./itemBank/index.js";
 
 export const router = Router();
 
-router.post("/sessions", (req, res) => {
+router.post("/sessions", async (req, res) => {
   const { childName, grade } = req.body ?? {};
   if (!childName || typeof childName !== "string" || !childName.trim()) {
     return res.status(400).json({ error: "childName is required" });
   }
-  const { id } = createSession(childName.trim().slice(0, 80), grade || "Grade 5");
+  const { id } = await createSession(childName.trim().slice(0, 80), grade || "Grade 5");
   res.json({ sessionId: id });
 });
 
-router.get("/sessions/:id/next-question", (req, res) => {
+router.get("/sessions/:id/next-question", async (req, res) => {
   const sessionId = req.params.id;
   let state;
   try {
-    state = getSessionState(sessionId);
+    state = await getSessionState(sessionId);
   } catch {
     return res.status(404).json({ error: "session not found" });
   }
@@ -40,7 +40,7 @@ router.get("/sessions/:id/next-question", (req, res) => {
     const next = selectNextQuestion(state);
     if (!next) {
       state.phase = "completed";
-      saveSessionState(sessionId, state, "completed");
+      await saveSessionState(sessionId, state, "completed");
       return res.json({ done: true });
     }
     state.seqCounter += 1;
@@ -56,7 +56,7 @@ router.get("/sessions/:id/next-question", (req, res) => {
       clientItem: sanitizeItemForClient(next.item),
       shownAtServerMs: Date.now(),
     };
-    saveSessionState(sessionId, state);
+    await saveSessionState(sessionId, state);
   }
 
   const pq = state.pendingQuestion!;
@@ -79,11 +79,11 @@ router.get("/sessions/:id/next-question", (req, res) => {
   });
 });
 
-router.post("/sessions/:id/answer", (req, res) => {
+router.post("/sessions/:id/answer", async (req, res) => {
   const sessionId = req.params.id;
   let state;
   try {
-    state = getSessionState(sessionId);
+    state = await getSessionState(sessionId);
   } catch {
     return res.status(404).json({ error: "session not found" });
   }
@@ -102,7 +102,7 @@ router.post("/sessions/:id/answer", (req, res) => {
     answerChanges: Number(answerChanges) || 0,
   });
 
-  const responseRow = insertResponse({
+  const responseRow = await insertResponse({
     session_id: sessionId,
     seq: pq.seq,
     topic_id: pq.topicId,
@@ -145,7 +145,7 @@ router.post("/sessions/:id/answer", (req, res) => {
   }
 
   state.pendingQuestion = null;
-  saveSessionState(sessionId, state);
+  await saveSessionState(sessionId, state);
 
   res.json({
     correct,
@@ -157,16 +157,16 @@ router.post("/sessions/:id/answer", (req, res) => {
   });
 });
 
-router.get("/sessions/:id/report", (req, res) => {
+router.get("/sessions/:id/report", async (req, res) => {
   const sessionId = req.params.id;
   let state, row;
   try {
-    state = getSessionState(sessionId);
-    row = getSessionRow(sessionId);
+    state = await getSessionState(sessionId);
+    row = await getSessionRow(sessionId);
   } catch {
     return res.status(404).json({ error: "session not found" });
   }
-  const responses = getResponses(sessionId);
+  const responses = await getResponses(sessionId);
   const report = synthesizeReport(state, responses, row.child_name, row.grade, row.created_at);
   res.json(report);
 });

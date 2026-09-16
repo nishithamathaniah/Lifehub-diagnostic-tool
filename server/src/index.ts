@@ -1,15 +1,7 @@
-import express from "express";
-import cors from "cors";
-import { router } from "./routes.js";
-import "./db.js";
+import { app } from "./app.js";
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use("/api", router);
-
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
-
+// Local dev / non-serverless entry point. On Vercel, `api/index.ts` imports
+// `app` directly and never runs this file.
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4001;
 app.listen(PORT, () => {
   console.log(`LifeHub diagnostic server listening on http://localhost:${PORT}`);

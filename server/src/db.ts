@@ -1,16 +1,28 @@
-import Database from "better-sqlite3";
+import { createClient } from "@libsql/client";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = path.join(__dirname, "..", "data");
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-export const db = new Database(path.join(dataDir, "lifehub.sqlite"));
-db.pragma("journal_mode = WAL");
+// Turso (libSQL) in production — a free-tier, network-accessible SQLite-compatible
+// database, since serverless functions have no persistent local disk to keep a
+// session's data alive between requests. Falls back to a local SQLite file with
+// zero setup for local dev (`npm run dev`) when no Turso credentials are set.
+const tursoUrl = process.env.TURSO_DATABASE_URL;
 
-db.exec(`
+const url = tursoUrl ?? (() => {
+  const dataDir = path.join(__dirname, "..", "data");
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  return `file:${path.join(dataDir, "lifehub.db")}`;
+})();
+
+export const db = createClient({
+  url,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   child_name TEXT NOT NULL,
@@ -43,4 +55,16 @@ CREATE TABLE IF NOT EXISTS responses (
 );
 
 CREATE INDEX IF NOT EXISTS idx_responses_session ON responses(session_id);
-`);
+`;
+
+// Serverless cold starts hit this on every fresh instance, so the migration
+// itself must be idempotent (CREATE TABLE/INDEX IF NOT EXISTS) and its result
+// memoized per-instance so warm invocations don't re-run it.
+let migrated: Promise<void> | null = null;
+
+export function ensureMigrated(): Promise<void> {
+  if (!migrated) {
+    migrated = db.executeMultiple(SCHEMA);
+  }
+  return migrated;
+}

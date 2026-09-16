@@ -13,9 +13,12 @@ and Division** and **Four Operations of Fractions**.
 
 ## Stack
 
-- **Server**: Node.js + TypeScript + Express, SQLite (`better-sqlite3`) for
-  persistence — sessions and every response are stored, not just held in
-  memory.
+- **Server**: Node.js + TypeScript + Express, persisted via
+  [Turso](https://turso.tech) (libSQL — SQLite-compatible, accessible over
+  the network). Locally it falls back to a plain SQLite file with zero
+  setup; in production it needs real Turso credentials because a
+  serverless function has no persistent local disk to keep a session's
+  data alive between requests (see *Deploying to Vercel* below).
 - **Client**: React + TypeScript (Vite).
 - No auth — this is a pilot/demo build, not a deployment-ready product (see
   *Open questions* below, carried over from the design doc).
@@ -49,6 +52,40 @@ logic and print the resulting report:
 cd server && npm run dev &     # needs the server running
 npm run simulate
 ```
+
+## Deploying to Vercel (free tier)
+
+The server is a single Express app exported for Vercel's Node runtime
+(`server/api/index.ts`), with `server/vercel.json` rewriting every request
+to it. To deploy the `server/` directory as its own Vercel project:
+
+1. **Create a free Turso database** — install the Turso CLI or use
+   [turso.tech](https://turso.tech) to sign up (free tier), then:
+   ```bash
+   turso db create lifehub-diagnostic
+   turso db show lifehub-diagnostic --url        # → TURSO_DATABASE_URL
+   turso db tokens create lifehub-diagnostic       # → TURSO_AUTH_TOKEN
+   ```
+2. In the Vercel project's **Settings → Environment Variables**, add
+   `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` with the values from step 1.
+3. Set the project's **Root Directory** to `server` (if not already).
+4. Redeploy. The schema migration runs automatically on first request —
+   no separate migration step needed.
+
+Without those two env vars set, the server falls back to a local SQLite
+file — which is what was causing the `FUNCTION_INVOCATION_FAILED` error on
+a bare deploy: a serverless function's filesystem is read-only outside
+`/tmp` and isn't shared across invocations, so there was nowhere durable
+to put that file, and (separately) the previous `better-sqlite3` version of
+this file used a native addon that isn't guaranteed to load in Vercel's
+runtime at all. Turso removes both problems by moving storage off the
+function entirely.
+
+The client (`client/`) deploys as a normal static Vite app on its own
+Vercel project (or any static host). Set its `VITE_API_BASE_URL` env var
+to the deployed server's URL plus `/api` (see `client/.env.example`) —
+without it, the client calls a relative `/api` path that only resolves
+correctly in local dev, where Vite's proxy handles it.
 
 ## How the design doc maps to this codebase
 
@@ -110,11 +147,15 @@ this probe plus the recorded per-representation accuracy.
 
 ```
 server/
+  api/index.ts      Vercel serverless entry point (exports the Express app)
+  vercel.json        rewrites every request to api/index.ts
   src/
     itemBank/       topics + authored items for the 2 pilot topics
     engine/         state, skillEngine, signalEngine, synthesis, view
-    db.ts           SQLite schema
-    sessionStore.ts persistence layer
+    db.ts           Turso/libSQL client + schema migration
+    sessionStore.ts persistence layer (async)
+    app.ts          Express app (no .listen — shared by local + serverless)
+    index.ts        local dev entry point (calls app.listen)
     routes.ts       REST API
   scripts/simulate.ts
 client/
@@ -123,4 +164,5 @@ client/
     components/      BarModel, ConcreteObjects, CPABloomGrid, SessionMap,
                      EngineTrace, PulseCheck, BloomPyramid
     styles/theme.css
+    api.ts          fetch layer (VITE_API_BASE_URL-aware)
 ```

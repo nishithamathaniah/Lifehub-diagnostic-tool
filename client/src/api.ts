@@ -1,6 +1,11 @@
 import { AnswerResponse, NextQuestionResponse, ReportData } from "./types";
 
-const BASE = "/api";
+// In local dev, Vite's proxy (vite.config.ts) forwards relative "/api" calls
+// to the local server, so no env var is needed. When the client is deployed
+// separately from the server (e.g. two different Vercel projects), set
+// VITE_API_BASE_URL to the deployed server's origin, e.g.
+// "https://lifehub-diagnostic-tool-server.vercel.app/api".
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 async function asJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
