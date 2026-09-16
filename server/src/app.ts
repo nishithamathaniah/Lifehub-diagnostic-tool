@@ -22,3 +22,9 @@ app.use(async (_req, res, next) => {
 
 app.use("/api", router);
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+// Also exported as default: if Vercel's Root Directory ends up pointing at
+// the repo root instead of server/, its zero-config detection can end up
+// invoking this file directly instead of api/index.ts, and it requires a
+// default export shaped like a request handler.
+export default app;
