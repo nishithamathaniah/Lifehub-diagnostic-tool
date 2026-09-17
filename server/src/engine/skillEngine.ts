@@ -113,7 +113,6 @@ export interface OutcomeInput {
   cpa: CPAStage;
   bloom: BloomLevel;
   correct: boolean;
-  lowHesitation: boolean;
   isReframe: boolean;
   reframeOfSeq: number | null;
   isProceduralCheck: boolean;

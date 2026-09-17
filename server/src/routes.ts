@@ -139,7 +139,6 @@ router.post("/sessions/:id/answer", async (req, res) => {
       cpa: pq.cpa,
       bloom: pq.bloom,
       correct,
-      lowHesitation: signal.lowHesitation,
       isReframe: pq.isReframe,
       reframeOfSeq: pq.reframeOfSeq,
       isProceduralCheck: pq.isProceduralCheck,

@@ -19,7 +19,9 @@ export interface SignalReading {
   longPauseBeforeStart: boolean; // avoidance-shaped: stalling before engaging at all
   quickGuess: boolean; // suspiciously fast full response — escape behaviour
   manyAnswerChanges: boolean;
-  lowHesitation: boolean; // the "cleared with low hesitation" gate the mastery loop checks
+  // Behavioural signal only — does NOT gate topic progress (that's correctness
+  // alone). Feeds the reframe-probe/anxiety detection and the report's evidence.
+  lowHesitation: boolean;
 }
 
 const LONG_PAUSE_BEFORE_START_MS = 7000;
