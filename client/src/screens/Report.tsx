@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getReport } from "../api";
 import { ReportData } from "../types";
 import { BloomPyramid } from "../components/BloomPyramid";
+import { ChildSummary } from "../components/ChildSummary";
 
 const STRAND_SUB: Record<string, string> = {
   "Number & Algebra": "Whole numbers, four operations, fractions, decimals",
@@ -30,6 +31,10 @@ export function Report({ sessionId }: { sessionId: string }) {
 
   return (
     <div>
+      <ChildSummary report={report} childName={report.childName} />
+
+      <div className="parent-section-label">FOR PARENTS &amp; TEACHERS — the details behind those notes</div>
+
       <div className="report-top">
         <div>
           <div className="report-meta">

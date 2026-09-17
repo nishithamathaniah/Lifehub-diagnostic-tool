@@ -317,6 +317,40 @@ button {
 .trace-line { font-size: 0.76rem; color: var(--ink-soft); padding: 5px 0; border-bottom: 1px dashed var(--line); line-height: 1.4; }
 .trace-line:last-child { border-bottom: none; }
 
+/* ---- Child-facing summary ---- */
+.child-summary {
+  background: linear-gradient(135deg, #eef6f3, #fdf3e8);
+  border: 1.5px solid var(--deep-teal);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 18px;
+}
+.child-summary h2 { font-size: 1.5rem; margin-bottom: 16px; }
+.child-block { margin-bottom: 16px; }
+.child-block:last-child { margin-bottom: 0; }
+.child-block-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; color: var(--ink); }
+.child-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.child-list li {
+  font-size: 1rem;
+  line-height: 1.5;
+  background: white;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.child-list.good li { border-left: 4px solid var(--deep-teal); }
+.child-list.practice li { border-left: 4px solid var(--warm-amber); }
+.child-allgood { font-size: 1rem; margin: 0; }
+
+.parent-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin: 6px 0 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
 /* ---- Report screen ---- */
 .report-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
 .report-meta { color: var(--ink-soft); font-size: 0.8rem; margin-bottom: 8px; }
