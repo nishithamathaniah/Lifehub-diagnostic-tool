@@ -66,7 +66,10 @@ router.get("/sessions/:id/next-question", async (req, res) => {
     done: false,
     phase: state.phase,
     seq: pq.seq,
-    questionNumber: state.totalQuestions + 1,
+    // pq.seq increments for every question shown, including warm-up — using
+    // totalQuestions here instead would freeze the displayed number during
+    // warm-up, since that counter only advances once real scoring starts.
+    questionNumber: pq.seq,
     maxQuestions: state.maxQuestions,
     isReframe: pq.isReframe,
     isProceduralCheck: pq.isProceduralCheck,

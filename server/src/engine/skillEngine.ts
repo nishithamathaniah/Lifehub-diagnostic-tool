@@ -1,10 +1,10 @@
-import { BLOOM_CEILING, CPA_ORDER, BloomLevel, CPAStage, cellId } from "../types.js";
+import { BLOOM_CEILING, BLOOM_ORDER, CPA_ORDER, BloomLevel, CPAStage, cellId } from "../types.js";
 import { SessionState, logTrace } from "./state.js";
 import { findItem, getItemById, getTopic, ALL_ITEMS } from "../itemBank/index.js";
 import { Item } from "../types.js";
 
 const CLIMB_BLOOM_ORDER: BloomLevel[] = ["understand", "apply", "analyze"];
-const LAG_THRESHOLD = 5;
+const LAG_THRESHOLD = 4;
 const REFRAME_DELAY_QUESTIONS = 5;
 
 export interface NextQuestion {
@@ -246,6 +246,14 @@ export function applyOutcome(state: SessionState, input: OutcomeInput): LoopOutc
       reason: `No traction after ${LAG_THRESHOLD} questions around ${t.frontierCpa}·${t.frontierBloom}.`,
     });
     logTrace(state, `${topic.shortLabel}: LAG POINT logged at ${t.frontierCpa}·${t.frontierBloom} — moving to a different strand.`);
+  } else if (t.probeCpa === "concrete") {
+    // Already at the scaffolding floor — there's no lower CPA stage to drop to,
+    // so re-asking the identical (concrete, frontierBloom) item would just repeat
+    // the same question verbatim. Vary the Bloom level instead, cycling through
+    // the concrete row's other authored items so each retry is a different question.
+    const rotatedIdx = (BLOOM_ORDER.indexOf(t.frontierBloom) + t.consecutiveStruggle) % BLOOM_ORDER.length;
+    t.probeBloom = BLOOM_ORDER[rotatedIdx];
+    logTrace(state, `${topic.shortLabel}: struggle at the Concrete floor → varying to ${t.probeCpa}·${t.probeBloom} instead of repeating the same item.`);
   } else {
     t.probeCpa = dropCpa(t.probeCpa);
     t.probeBloom = t.frontierBloom;

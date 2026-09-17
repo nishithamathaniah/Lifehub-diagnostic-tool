@@ -11,7 +11,10 @@ import { PulseCheck } from "../components/PulseCheck";
 export function Assessment({ sessionId, onComplete }: { sessionId: string; onComplete: () => void }) {
   const [question, setQuestion] = useState<NextQuestionResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showPanel, setShowPanel] = useState(true);
+  // Hidden by default — per the design doc, the CPA×Bloom grid / session map /
+  // engine trace are for reviewer/QA use, not something a child should see
+  // during their own session. The toggle is left in for demoing/debugging.
+  const [showPanel, setShowPanel] = useState(false);
 
   const [selectedChoiceId, setSelectedChoiceId] = useState<string | null>(null);
   const [answerChanges, setAnswerChanges] = useState(0);
