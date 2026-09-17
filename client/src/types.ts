@@ -8,6 +8,7 @@ export interface BarModelSpec {
   highlightParts?: number;
   queryPartIndex?: number;
   segmentLabels?: string[];
+  highlightGroups?: { count: number; label: string }[];
 }
 
 export interface ConcreteSpec {
@@ -16,6 +17,7 @@ export interface ConcreteSpec {
   itemCount: number;
   groups: number;
   groupLabel: string;
+  segments?: { icon: string; count: number; label: string }[];
 }
 
 export type Representation = BarModelSpec | ConcreteSpec | null;

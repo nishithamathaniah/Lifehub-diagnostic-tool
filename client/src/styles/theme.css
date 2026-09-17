@@ -242,6 +242,16 @@ button {
 .bar-seg:last-child { border-right: none; }
 .bar-seg.unshaded { background: #dce9e4; color: var(--deep-teal-dark); }
 .bar-seg.query { background: var(--warm-amber); }
+.bar-seg.group-a { background: var(--deep-teal); }
+.bar-seg.group-b { background: var(--muted-violet); }
+.bar-seg.group-c { background: var(--soft-clay); }
+
+.bar-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 0.78rem; color: var(--ink-soft); }
+.bar-legend-item { display: flex; align-items: center; gap: 6px; }
+.bar-legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.bar-legend-swatch.group-a { background: var(--deep-teal); }
+.bar-legend-swatch.group-b { background: var(--muted-violet); }
+.bar-legend-swatch.group-c { background: var(--soft-clay); }
 
 /* ---- Concrete objects ---- */
 .concrete-wrap { display: flex; flex-direction: column; gap: 10px; margin: 10px 0 18px; }
@@ -266,6 +276,17 @@ button {
 }
 .concrete-remainder .icons { font-size: 1.3rem; line-height: 1.4; }
 .concrete-remainder .glabel { font-size: 0.7rem; color: #a5661c; margin-top: 4px; }
+
+.concrete-mixed {
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 1.3rem;
+  line-height: 1.6;
+  word-break: break-all;
+}
+.mixed-icons { margin-right: 4px; }
+.concrete-mixed-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.78rem; color: var(--ink-soft); }
 
 /* ---- Side panel ---- */
 .panel-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); margin-bottom: 10px; }

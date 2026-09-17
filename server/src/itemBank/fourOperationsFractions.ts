@@ -27,7 +27,18 @@ export const FOUR_OPERATIONS_FRACTIONS_ITEMS: Item[] = [
     bloom: "understand",
     subskill: "add-subtract-like",
     prompt: "3/8 of a bag of marbles are red and 2/8 are blue. Using the counters shown, what fraction of the bag is red or blue?",
-    representation: { kind: "concrete", icon: "🔵", itemCount: 8, groups: 1, groupLabel: "bag" },
+    representation: {
+      kind: "concrete",
+      icon: "🔴",
+      itemCount: 8,
+      groups: 1,
+      groupLabel: "bag",
+      segments: [
+        { icon: "🔴", count: 3, label: "red" },
+        { icon: "🔵", count: 2, label: "blue" },
+        { icon: "⚪", count: 3, label: "neither" },
+      ],
+    },
     choices: [
       { id: "a", text: "5/8" },
       { id: "b", text: "1/8" },
@@ -109,7 +120,15 @@ export const FOUR_OPERATIONS_FRACTIONS_ITEMS: Item[] = [
     bloom: "understand",
     subskill: "add-subtract-like",
     prompt: "Raj eats 2/6 of a cake and Mia eats 1/6 of the same cake, shown on the bar model. What fraction of the cake did they eat together?",
-    representation: { kind: "bar-model", totalLabel: "1 cake", parts: 6, highlightParts: 3 },
+    representation: {
+      kind: "bar-model",
+      totalLabel: "1 cake",
+      parts: 6,
+      highlightGroups: [
+        { count: 2, label: "Raj: 2/6" },
+        { count: 1, label: "Mia: 1/6" },
+      ],
+    },
     choices: [
       { id: "a", text: "3/6 (½)" },
       { id: "b", text: "1/6" },
@@ -125,7 +144,15 @@ export const FOUR_OPERATIONS_FRACTIONS_ITEMS: Item[] = [
     bloom: "apply",
     subskill: "word-problem-setup",
     prompt: "A ribbon is 5/6 m long. Priya uses 1/3 m of it. Using the bar model, how much ribbon is left?",
-    representation: { kind: "bar-model", totalLabel: "5/6 m ribbon", parts: 6, highlightParts: 5 },
+    representation: {
+      kind: "bar-model",
+      totalLabel: "5/6 m ribbon (the 6th part is not part of the ribbon at all)",
+      parts: 6,
+      highlightGroups: [
+        { count: 2, label: "used: 1/3 m (2/6)" },
+        { count: 3, label: "remaining ribbon" },
+      ],
+    },
     choices: [
       { id: "a", text: "1/2 m" },
       { id: "b", text: "2/3 m" },
@@ -140,8 +167,16 @@ export const FOUR_OPERATIONS_FRACTIONS_ITEMS: Item[] = [
     cpa: "pictorial",
     bloom: "analyze",
     subskill: "word-problem-setup",
-    prompt: "A jug has 3/4 L of juice, shown on the bar model. Half of it is poured into a glass. Which amount was poured?",
-    representation: { kind: "bar-model", totalLabel: "3/4 L juice", parts: 4, highlightParts: 3 },
+    prompt: "A jug has 3/4 L of juice, shown on the bar model (drawn in eighths so the half-pour splits evenly). Half of it is poured into a glass. Which amount was poured?",
+    representation: {
+      kind: "bar-model",
+      totalLabel: "3/4 L juice = 6/8 L (the last 2/8 is not part of the juice at all)",
+      parts: 8,
+      highlightGroups: [
+        { count: 3, label: "poured into glass: 3/8 L" },
+        { count: 3, label: "remains in jug" },
+      ],
+    },
     choices: [
       { id: "a", text: "3/8 L, because half of 3/4 is 3/8" },
       { id: "b", text: "1/2 L, because the glass just needs half a liter" },
