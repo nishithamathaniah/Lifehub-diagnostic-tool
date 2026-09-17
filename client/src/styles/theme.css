@@ -167,26 +167,6 @@ button {
 .tag-bloom { background: var(--tan); color: #6b5a2f; }
 .tag-badge-procedural { background: #e7e3f5; color: var(--muted-violet); }
 
-.reframe-card {
-  background: linear-gradient(160deg, #fdf3e8, #fffdf9);
-  border: 1.5px dashed var(--warm-amber);
-}
-.reframe-pill {
-  background: #fde8db;
-  color: #a5661c;
-  font-weight: 700;
-  font-size: 0.8rem;
-  padding: 5px 12px;
-  border-radius: 999px;
-}
-.reframe-lead-in {
-  color: #a5661c;
-  font-family: var(--font-sans);
-  font-size: 0.8rem;
-  font-weight: 600;
-  display: block;
-  margin-bottom: 6px;
-}
 
 .prompt-text {
   font-family: var(--font-serif);
@@ -388,7 +368,6 @@ button {
 .summary-card .num { font-family: var(--font-serif); font-size: 1.4rem; }
 .summary-card.mastered .num { color: var(--deep-teal); }
 .summary-card.skill .num { color: var(--soft-clay); }
-.summary-card.anxiety .num { color: var(--warm-amber); }
 .summary-card.procedural .num { color: var(--muted-violet); }
 
 .pyramid-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 26px; }
@@ -410,7 +389,6 @@ table.topic-table td { padding: 12px 10px; border-bottom: 1px solid var(--line);
 .dx-pill { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-block; white-space: nowrap; }
 .dx-mastered { background: #ddeae5; color: var(--deep-teal-dark); }
 .dx-skill_gap { background: #f4dcd8; color: var(--soft-clay); }
-.dx-anxiety_flagged { background: #fde8db; color: #a5661c; }
 .dx-procedural_not_conceptual { background: #e7e3f5; color: var(--muted-violet); }
 .dx-not_yet_reached { background: #ece8de; color: var(--ink-soft); }
 
@@ -424,3 +402,40 @@ table.topic-table td { padding: 12px 10px; border-bottom: 1px solid var(--line);
 
 .glossary-box { background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px; font-size: 0.85rem; line-height: 1.6; color: var(--ink-soft); }
 .glossary-box b { color: var(--ink); }
+
+/* ---- Math Confidence Check (report section) ---- */
+.anxiety-report-card { font-size: 0.9rem; line-height: 1.55; color: var(--ink-soft); margin-bottom: 26px; }
+.anxiety-level-row { display: flex; align-items: center; gap: 10px; margin: 14px 0 16px; font-size: 0.9rem; color: var(--ink); font-weight: 600; }
+.anxiety-level-low { background: #ddeae5; color: var(--deep-teal-dark); }
+.anxiety-level-moderate { background: #fde8db; color: #a5661c; }
+.anxiety-level-elevated { background: #f4dcd8; color: var(--soft-clay); }
+.anxiety-factor-row { margin-bottom: 12px; }
+.anxiety-factor-label { display: block; font-size: 0.8rem; color: var(--ink); margin-bottom: 4px; }
+.anxiety-factor-track { background: #ece6d8; border-radius: 999px; height: 10px; overflow: hidden; }
+.anxiety-factor-fill { background: var(--warm-amber); height: 100%; border-radius: 999px; }
+
+/* ---- Standalone anxiety questionnaire screen ---- */
+.anxiety-check { max-width: 640px; margin: 0 auto; }
+.anxiety-check h1 { font-size: 1.5rem; margin-bottom: 8px; }
+.anxiety-intro { color: var(--ink-soft); font-size: 0.92rem; margin-bottom: 24px; }
+.anxiety-list { display: flex; flex-direction: column; gap: 20px; margin-bottom: 28px; }
+.anxiety-item { background: var(--card-bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.anxiety-question { font-size: 1rem; font-weight: 600; margin-bottom: 12px; }
+.anxiety-options { display: flex; gap: 10px; flex-wrap: wrap; }
+.anxiety-option {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 1.5px solid var(--line);
+  background: white;
+  border-radius: 10px;
+  padding: 12px 8px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.anxiety-option:hover { border-color: var(--deep-teal); }
+.anxiety-option.selected { border-color: var(--deep-teal); background: #eef6f3; color: var(--ink); font-weight: 600; }
+.anxiety-emoji { font-size: 1.6rem; }

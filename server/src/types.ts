@@ -67,7 +67,7 @@ export interface Topic {
   dependsOn: string[];
 }
 
-export type DiagnosisTag = "mastered" | "skill_gap" | "procedural_not_conceptual" | "anxiety_flagged" | "not_yet_reached";
+export type DiagnosisTag = "mastered" | "skill_gap" | "procedural_not_conceptual" | "not_yet_reached";
 
 export interface CellKey {
   cpa: CPAStage;

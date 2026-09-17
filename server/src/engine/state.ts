@@ -4,16 +4,6 @@ import type { ClientItem } from "../itemBank/index.js";
 
 export type TopicStatus = "locked" | "in_progress" | "mastered" | "lag_point";
 
-export interface PendingReframe {
-  itemId: string;
-  cpa: CPAStage;
-  bloom: BloomLevel;
-  subskill: string;
-  originalSeq: number;
-  scheduledAtSeq: number; // don't present before this sequence number
-  presented: boolean;
-}
-
 export interface LagPoint {
   cpa: CPAStage;
   bloom: BloomLevel;
@@ -41,8 +31,6 @@ export interface TopicEngineState {
   questionsAsked: number;
   askedItemIds: string[];
   lagPoints: LagPoint[];
-  pendingReframes: PendingReframe[];
-  reframeOutcome: "recovered" | "confirmed" | null;
   proceduralCheck: ProceduralCheck | null;
   masteredAtSeq: number | null;
   cellStatus: Record<string, "cleared" | "struggled">;
@@ -54,11 +42,14 @@ export interface PendingQuestion {
   topicId: string;
   cpa: CPAStage;
   bloom: BloomLevel;
-  isReframe: boolean;
-  reframeOfSeq: number | null;
   isProceduralCheck: boolean;
   clientItem: ClientItem;
   shownAtServerMs: number;
+}
+
+export interface AnxietyResponse {
+  questionId: string;
+  score: number; // 1 = not worried, 2 = a little, 3 = very worried
 }
 
 export interface SessionState {
@@ -68,10 +59,15 @@ export interface SessionState {
   totalQuestions: number;
   seqCounter: number;
   engineTrace: string[];
-  phase: "warmup" | "assessment" | "completed";
+  // The skill assessment (warmup + assessment) and the anxiety questionnaire
+  // are two separate instruments run one after the other, not interleaved —
+  // see README for why (this mirrors how the validated scales are actually
+  // used in the research, rather than inventing a combined live signal).
+  phase: "warmup" | "assessment" | "anxiety_questionnaire" | "completed";
   warmupRemaining: number;
   maxQuestions: number;
   pendingQuestion: PendingQuestion | null;
+  anxietyResponses: AnxietyResponse[];
 }
 
 export function createInitialState(): SessionState {
@@ -88,8 +84,6 @@ export function createInitialState(): SessionState {
       questionsAsked: 0,
       askedItemIds: [],
       lagPoints: [],
-      pendingReframes: [],
-      reframeOutcome: null,
       proceduralCheck: null,
       masteredAtSeq: null,
       cellStatus: {},
@@ -107,6 +101,7 @@ export function createInitialState(): SessionState {
     warmupRemaining: 2,
     maxQuestions: 40,
     pendingQuestion: null,
+    anxietyResponses: [],
   };
 }
 

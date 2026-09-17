@@ -5,12 +5,9 @@ import { Item } from "../types.js";
 
 const CLIMB_BLOOM_ORDER: BloomLevel[] = ["understand", "apply", "analyze"];
 const LAG_THRESHOLD = 4;
-const REFRAME_DELAY_QUESTIONS = 5;
 
 export interface NextQuestion {
   item: Item;
-  isReframe: boolean;
-  reframeOfSeq: number | null;
   isProceduralCheck: boolean;
 }
 
@@ -61,11 +58,6 @@ function activeTopicId(state: SessionState): string | null {
   return null;
 }
 
-function dueReframe(state: SessionState, topicId: string) {
-  const t = state.topics[topicId];
-  return t.pendingReframes.find((r) => !r.presented && state.seqCounter >= r.scheduledAtSeq);
-}
-
 function dueProceduralCheck(state: SessionState, topicId: string) {
   const t = state.topics[topicId];
   const pc = t.proceduralCheck;
@@ -73,39 +65,37 @@ function dueProceduralCheck(state: SessionState, topicId: string) {
   return null;
 }
 
+/**
+ * Returns null once the skill assessment itself is done — the caller
+ * transitions to the separate anxiety questionnaire from there (see
+ * routes.ts). This function only ever drives the CPA×Bloom skill test.
+ */
 export function selectNextQuestion(state: SessionState): NextQuestion | null {
   if (state.totalQuestions >= state.maxQuestions) return null;
 
-  // Warm-up: easy, explicitly low-stakes items to calibrate baseline pace.
+  // Warm-up: easy items to calibrate baseline pace before the real assessment.
   if (state.phase === "warmup") {
     const askedSoFar = 2 - state.warmupRemaining;
     const topicForWarmup = state.topicOrder[askedSoFar % state.topicOrder.length];
     const item = findBestItem(topicForWarmup, "concrete", "remember");
-    return { item, isReframe: false, reframeOfSeq: null, isProceduralCheck: false };
+    return { item, isProceduralCheck: false };
   }
 
   const topicId = activeTopicId(state);
-  if (!topicId) return null; // nothing left to test — assessment complete
+  if (!topicId) return null; // nothing left to test — skill assessment complete
   const t = state.topics[topicId];
 
   // The procedural-vs-conceptual side-probe fires soon after a struggle —
-  // it's a quick check, not a delayed reframe, so it takes first priority.
+  // this is a CPA-representation check (Singapore Math's own pedagogy), not
+  // an anxiety-detection mechanism, so it stays.
   const pc = dueProceduralCheck(state, topicId);
   if (pc) {
     const item = getItemById(pc.itemId);
-    return { item, isReframe: false, reframeOfSeq: null, isProceduralCheck: true };
-  }
-
-  // A due reframe probe takes priority once its cooldown has elapsed —
-  // it needs to land later in the session so the "no pressure" framing is credible.
-  const reframe = dueReframe(state, topicId);
-  if (reframe) {
-    const item = getItemById(reframe.itemId);
-    return { item, isReframe: true, reframeOfSeq: reframe.originalSeq, isProceduralCheck: false };
+    return { item, isProceduralCheck: true };
   }
 
   const item = findBestItem(topicId, t.probeCpa, t.probeBloom);
-  return { item, isReframe: false, reframeOfSeq: null, isProceduralCheck: false };
+  return { item, isProceduralCheck: false };
 }
 
 export interface OutcomeInput {
@@ -113,19 +103,11 @@ export interface OutcomeInput {
   cpa: CPAStage;
   bloom: BloomLevel;
   correct: boolean;
-  isReframe: boolean;
-  reframeOfSeq: number | null;
   isProceduralCheck: boolean;
   seq: number;
 }
 
-export type LoopOutcome =
-  | "cleared"
-  | "struggle"
-  | "reframe_recovered"
-  | "reframe_confirmed"
-  | "procedural_confirmed"
-  | "procedural_ruled_out";
+export type LoopOutcome = "cleared" | "struggle" | "procedural_confirmed" | "procedural_ruled_out";
 
 export function applyOutcome(state: SessionState, input: OutcomeInput): LoopOutcome {
   const t = state.topics[input.topicId];
@@ -145,27 +127,10 @@ export function applyOutcome(state: SessionState, input: OutcomeInput): LoopOutc
     }
   }
 
-  if (input.isReframe) {
-    const pending = t.pendingReframes.find((r) => r.originalSeq === input.reframeOfSeq);
-    if (pending) pending.presented = true;
-    if (input.correct) {
-      t.reframeOutcome = "recovered";
-      logTrace(state, `Reframe probe on ${topic.shortLabel} recovered → anxiety-flagged, not a skill gap.`);
-      return "reframe_recovered";
-    } else {
-      t.reframeOutcome = "confirmed";
-      logTrace(state, `Reframe probe on ${topic.shortLabel} still missed → confirmed skill gap.`);
-      return "reframe_confirmed";
-    }
-  }
-
   const atFrontier = input.cpa === t.frontierCpa && input.bloom === t.frontierBloom;
 
   // Progress is gated on correctness alone — a right answer that took a
-  // moment to think through still counts as cleared. Hesitation is real
-  // signal (it's what the reframe probe and the report's evidence use),
-  // but it must never re-ask something the child already got right, or
-  // "I answered correctly" stops meaning anything to them.
+  // moment to think through still counts as cleared.
   if (input.correct) {
     t.cellStatus[cellId({ cpa: input.cpa, bloom: input.bloom })] = "cleared";
 
@@ -203,15 +168,15 @@ export function applyOutcome(state: SessionState, input: OutcomeInput): LoopOutc
     return "cleared";
   }
 
-  // STRUGGLE — drop one cell, probe laterally, and (once per topic) queue a reframe probe.
-  // The struggle count tracks the frontier, not the scaffolding, so it only resets on a real clear.
+  // STRUGGLE — drop one cell and probe laterally. The struggle count tracks
+  // the frontier, not the scaffolding, so it only resets on a real clear.
   t.cellStatus[cellId({ cpa: input.cpa, bloom: input.bloom })] = "struggled";
   t.consecutiveStruggle += 1;
 
   // After a second struggle while still below Abstract, run a quick side-probe:
   // can the child compute the identical relationship symbolically? A yes here is
   // the "procedural without conceptual grounding" signature from Section 04 —
-  // distinct from both a plain skill gap and an anxiety pattern.
+  // a CPA-representation gap, distinct from a plain skill gap.
   if (!t.proceduralCheck && t.consecutiveStruggle === 2 && t.frontierCpa !== "abstract") {
     const abstractItem = findBestItem(input.topicId, "abstract", t.frontierBloom);
     if (abstractItem.cpa === "abstract") {
@@ -224,21 +189,6 @@ export function applyOutcome(state: SessionState, input: OutcomeInput): LoopOutc
       };
       logTrace(state, `${topic.shortLabel}: queued an Abstract side-probe on the identical relationship to check for a memorized-but-not-understood pattern.`);
     }
-  }
-
-  const hasReframeAlready = t.pendingReframes.length > 0;
-  if (!hasReframeAlready) {
-    const frontierItem = findBestItem(input.topicId, t.frontierCpa, t.frontierBloom);
-    t.pendingReframes.push({
-      itemId: frontierItem.id,
-      cpa: t.frontierCpa,
-      bloom: t.frontierBloom,
-      subskill: frontierItem.subskill,
-      originalSeq: input.seq,
-      scheduledAtSeq: state.seqCounter + REFRAME_DELAY_QUESTIONS,
-      presented: false,
-    });
-    logTrace(state, `${topic.shortLabel}: struggle at ${t.frontierCpa}·${t.frontierBloom} → queued reframe probe for later, untimed.`);
   }
 
   if (t.consecutiveStruggle >= LAG_THRESHOLD) {

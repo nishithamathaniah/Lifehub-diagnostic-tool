@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Setup } from "./screens/Setup";
 import { Assessment } from "./screens/Assessment";
+import { AnxietyCheck } from "./screens/AnxietyCheck";
 import { Report } from "./screens/Report";
 
-type Screen = "setup" | "assessment" | "report";
+type Screen = "setup" | "assessment" | "anxietyCheck" | "report";
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("setup");
@@ -27,7 +28,10 @@ export function App() {
         />
       )}
       {screen === "assessment" && sessionId && (
-        <Assessment sessionId={sessionId} onComplete={() => setScreen("report")} />
+        <Assessment sessionId={sessionId} onSkillAssessmentDone={() => setScreen("anxietyCheck")} />
+      )}
+      {screen === "anxietyCheck" && sessionId && (
+        <AnxietyCheck sessionId={sessionId} onComplete={() => setScreen("report")} />
       )}
       {screen === "report" && sessionId && <Report sessionId={sessionId} />}
     </div>

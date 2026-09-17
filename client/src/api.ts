@@ -1,4 +1,4 @@
-import { AnswerResponse, NextQuestionResponse, ReportData } from "./types";
+import { AnswerResponse, AnxietyQuestion, NextQuestionResponse, ReportData } from "./types";
 
 // In local dev, Vite's proxy (vite.config.ts) forwards relative "/api" calls
 // to the local server, so no env var is needed. When the client is deployed
@@ -50,4 +50,22 @@ export async function submitAnswer(sessionId: string, payload: AnswerPayload): P
 export async function getReport(sessionId: string): Promise<ReportData> {
   const res = await fetch(`${BASE}/sessions/${sessionId}/report`);
   return asJson<ReportData>(res);
+}
+
+export async function getAnxietyQuestions(sessionId: string): Promise<AnxietyQuestion[]> {
+  const res = await fetch(`${BASE}/sessions/${sessionId}/anxiety-questions`);
+  const data = await asJson<{ questions: AnxietyQuestion[] }>(res);
+  return data.questions;
+}
+
+export async function submitAnxietyAnswers(
+  sessionId: string,
+  responses: { questionId: string; score: number }[]
+): Promise<void> {
+  const res = await fetch(`${BASE}/sessions/${sessionId}/anxiety-answers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ responses }),
+  });
+  await asJson<{ ok: boolean }>(res);
 }

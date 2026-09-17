@@ -1,6 +1,7 @@
 import { SessionState } from "./state.js";
 import { ResponseRecord } from "../sessionStore.js";
 import { TOPICS, getTopic } from "../itemBank/index.js";
+import { ANXIETY_QUESTIONS, AnxietyFactor } from "../itemBank/anxietyQuestionnaire.js";
 import { BLOOM_ORDER, BloomLevel, CPAStage, DiagnosisTag } from "../types.js";
 
 export interface TopicDiagnosis {
@@ -14,6 +15,18 @@ export interface TopicDiagnosis {
   recommendation: string;
 }
 
+export type AnxietyLevel = "low" | "moderate" | "elevated";
+
+export interface MathAnxietyResult {
+  answered: boolean;
+  overallScore: number;
+  maxScore: number;
+  level: AnxietyLevel;
+  numericalScore: number;
+  situationalScore: number;
+  factorMax: number;
+}
+
 export interface ReportData {
   childName: string;
   grade: string;
@@ -22,9 +35,10 @@ export interface ReportData {
   durationMinutes: number;
   headline: string;
   subheadline: string;
-  summary: { mastered: number; skillGap: number; anxietyFlagged: number; proceduralNotConceptual: number; total: number };
+  summary: { mastered: number; skillGap: number; proceduralNotConceptual: number; total: number };
   bloomByStrand: { strand: string; assessed: boolean; deepest: BloomLevel | null }[];
   topics: TopicDiagnosis[];
+  mathAnxiety: MathAnxietyResult;
   glossary: { tag: string; label: string; description: string }[];
 }
 
@@ -32,7 +46,6 @@ const TAG_LABEL: Record<DiagnosisTag, string> = {
   mastered: "Mastered",
   skill_gap: "Skill gap",
   procedural_not_conceptual: "Procedural, not conceptual",
-  anxiety_flagged: "Anxiety-flagged",
   not_yet_reached: "Not yet reached",
 };
 
@@ -40,7 +53,6 @@ const TAG_RECOMMENDATION: Record<DiagnosisTag, string> = {
   mastered: "Move on — no intervention needed.",
   skill_gap: "Reteach the identified prerequisite directly.",
   procedural_not_conceptual: "Visual / hands-on practice before further abstract drilling.",
-  anxiety_flagged: "Confidence-building, low-stakes practice — not reteaching.",
   not_yet_reached: "Will be assessed once its prerequisite gap closes.",
 };
 
@@ -51,7 +63,7 @@ function fmtSec(ms: number) {
 }
 
 function accuracyByCpa(responses: ResponseRecord[], topicId: string) {
-  const rows = responses.filter((r) => r.topic_id === topicId && !r.is_reframe && !r.is_procedural_check);
+  const rows = responses.filter((r) => r.topic_id === topicId && !r.is_procedural_check);
   const byCpa: Record<string, { correct: number; total: number; avgHesitation: number; avgSolving: number; answerChanges: number }> = {};
   for (const r of rows) {
     const bucket = (byCpa[r.cpa] ??= { correct: 0, total: 0, avgHesitation: 0, avgSolving: 0, answerChanges: 0 });
@@ -81,11 +93,7 @@ function bloomIndexReached(cellStatus: Record<string, "cleared" | "struggled">, 
   return deepest;
 }
 
-function buildTopicDiagnosis(
-  topicId: string,
-  state: SessionState,
-  responses: ResponseRecord[]
-): TopicDiagnosis {
+function buildTopicDiagnosis(topicId: string, state: SessionState, responses: ResponseRecord[]): TopicDiagnosis {
   const topic = getTopic(topicId);
   const t = state.topics[topicId];
   const acc = accuracyByCpa(responses, topicId);
@@ -109,9 +117,9 @@ function buildTopicDiagnosis(
     evidence.push(`${topic.name} was not yet reached this session because it depends on ${deps || "an earlier topic"} being cleared first.`);
   } else if (t.status === "mastered") {
     tag = "mastered";
-    evidence.push(`Reached Abstract·Analyze with consistent accuracy and low hesitation across representations.`);
+    evidence.push(`Reached Abstract·Analyze with consistent accuracy across representations.`);
   } else {
-    // lag_point or an unresolved in_progress topic at session end
+    // lag_point, or an unresolved in_progress topic at session end
     const proceduralConfirmed = t.proceduralCheck?.correct === true;
     if (proceduralConfirmed) {
       tag = "procedural_not_conceptual";
@@ -120,22 +128,14 @@ function buildTopicDiagnosis(
       const concreteAcc = acc["concrete"];
       cpaGapNote = "Abstract ✓ · Pictorial ✗";
       if (abstractAcc) {
-        evidence.push(`${abstractAcc.correct}/${abstractAcc.total} correct on Abstract (avg ${fmtSec(abstractAcc.avgSolving)}/question, no hesitation flags).`);
+        evidence.push(`${abstractAcc.correct}/${abstractAcc.total} correct on Abstract (avg ${fmtSec(abstractAcc.avgSolving)}/question).`);
       }
       const weakerAcc = pictorialAcc && pictorialAcc.total ? pictorialAcc : concreteAcc;
       const weakerLabel = pictorialAcc && pictorialAcc.total ? "Pictorial" : "Concrete";
       if (weakerAcc) {
-        evidence.push(`${weakerAcc.correct}/${weakerAcc.total} correct on ${weakerLabel} of the identical relationship (avg ${fmtSec(weakerAcc.avgHesitation)} hesitation, ${weakerAcc.answerChanges} answer changes).`);
+        evidence.push(`${weakerAcc.correct}/${weakerAcc.total} correct on ${weakerLabel} of the identical relationship.`);
       }
       evidence.push(`The identical relationship, computed correctly in symbols, could not be represented or interpreted visually — a memorized procedure without the underlying concept.`);
-    } else if (t.reframeOutcome === "recovered") {
-      tag = "anxiety_flagged";
-      cpaGapNote = `${t.lagPoints[0]?.cpa ?? t.frontierCpa} · word-framing ✗`;
-      const strugglingCpaAcc = acc[t.lagPoints[0]?.cpa ?? t.frontierCpa];
-      if (strugglingCpaAcc) {
-        evidence.push(`${strugglingCpaAcc.correct}/${strugglingCpaAcc.total} correct on first attempt (avg ${fmtSec(strugglingCpaAcc.avgHesitation)} hesitation before starting).`);
-      }
-      evidence.push(`Performance recovered when the identical question was re-presented later, untimed and low-stakes — the skill is present but was suppressed under the original framing.`);
     } else {
       tag = "skill_gap";
       cpaGapNote = "Not yet reached";
@@ -143,11 +143,7 @@ function buildTopicDiagnosis(
       if (lag) {
         evidence.push(`Struggle persisted across representations around ${lag.cpa}·${lag.bloom}; ${lag.reason}`);
       }
-      if (t.reframeOutcome === "confirmed") {
-        evidence.push(`Performance did not recover even under an untimed, low-stakes reframe — this rules out anxiety and confirms a genuine gap.`);
-      } else {
-        evidence.push(`A reframe probe was queued but the session ended before it could be re-presented; treated conservatively as a skill gap pending more data.`);
-      }
+      evidence.push(`This reflects the skill assessment alone — see the separate Math Confidence Check below for whether anxiety may also be a factor.`);
     }
   }
 
@@ -166,7 +162,6 @@ function buildTopicDiagnosis(
 function buildHeadline(childName: string, topics: TopicDiagnosis[]): { headline: string; subheadline: string } {
   const mastered = topics.filter((t) => t.tag === "mastered");
   const procedural = topics.find((t) => t.tag === "procedural_not_conceptual");
-  const anxiety = topics.find((t) => t.tag === "anxiety_flagged");
   const skillGap = topics.find((t) => t.tag === "skill_gap");
 
   const masteredList = mastered.map((t) => t.name.toLowerCase()).join(" and ");
@@ -174,29 +169,51 @@ function buildHeadline(childName: string, topics: TopicDiagnosis[]): { headline:
   if (procedural) {
     return {
       headline: `${childName} computes ${procedural.name.toLowerCase()} correctly in symbols — the lag shows up specifically in representing it visually, not in the arithmetic itself.`,
-      subheadline: `Across the session, ${childName} answered abstract/symbolic questions on this topic correctly and quickly, but could not identify or complete the identical relationship shown as a bar model. This usually means a procedure was memorized ahead of the underlying concept — it is not a sign the arithmetic needs re-teaching.`,
-    };
-  }
-  if (anxiety) {
-    return {
-      headline: mastered.length
-        ? `${childName} is solid on ${masteredList} — the lag in ${anxiety.name.toLowerCase()} shows up specifically under word-problem framing, not in the computation itself.`
-        : `${childName}'s lag in ${anxiety.name.toLowerCase()} shows up specifically under word-problem framing, not in the computation itself.`,
-      subheadline: `Correct answers dropped sharply only when a question required setting up a model from a word problem — not when the same arithmetic was asked directly, and performance recovered once the pressure was removed. This is a distinguishing pattern worth watching with confidence-building practice, not a sign the topic needs re-teaching from scratch.`,
+      subheadline: `Across the session, ${childName} answered abstract/symbolic questions on this topic correctly, but could not identify or complete the identical relationship shown as a bar model. This usually means a procedure was memorized ahead of the underlying concept — it is not a sign the arithmetic needs re-teaching.`,
     };
   }
   if (skillGap) {
     return {
       headline: mastered.length
-        ? `${childName} is solid on ${masteredList} — but has a genuine prerequisite gap in ${skillGap.name.toLowerCase()}.`
-        : `${childName} has a genuine prerequisite gap in ${skillGap.name.toLowerCase()} that is holding back later topics.`,
-      subheadline: `The struggle on this topic persisted across representations and did not recover under a low-stakes reframe, which points to a real missing prerequisite rather than pressure or framing. Directly reteaching this topic before moving on is likely to unblock what depends on it.`,
+        ? `${childName} is solid on ${masteredList} — but has a prerequisite gap in ${skillGap.name.toLowerCase()}.`
+        : `${childName} has a prerequisite gap in ${skillGap.name.toLowerCase()} that is holding back later topics.`,
+      subheadline: `This is what the skill assessment alone shows. The separate Math Confidence Check below looks at whether anxiety may also be part of the picture — read both sections together before deciding how to respond.`,
     };
   }
   return {
     headline: `${childName} shows full mastery across every topic assessed this session.`,
-    subheadline: `Accuracy stayed consistent across Concrete, Pictorial, and Abstract representations, with low hesitation throughout — no skill gap, procedural, or anxiety pattern was flagged.`,
+    subheadline: `Accuracy stayed consistent across Concrete, Pictorial, and Abstract representations. See the separate Math Confidence Check below for how ${childName} feels about math day-to-day.`,
   };
+}
+
+/**
+ * Scored from the standalone anxiety questionnaire (see anxietyQuestionnaire.ts) —
+ * a separate instrument, not derived from in-session behaviour. Each item is
+ * 1 (not worried) to 3 (very worried). The low/moderate/elevated bands below
+ * are our own reasonable split of the score range, not official published
+ * SEMA norms — treat them as a rough read, not a clinical cutoff, until this
+ * can be validated against real pilot data.
+ */
+function computeMathAnxiety(state: SessionState): MathAnxietyResult {
+  const factorMax = ANXIETY_QUESTIONS.filter((q) => q.factor === "numerical").length * 3;
+  const maxScore = ANXIETY_QUESTIONS.length * 3;
+
+  if (state.anxietyResponses.length === 0) {
+    return { answered: false, overallScore: 0, maxScore, level: "low", numericalScore: 0, situationalScore: 0, factorMax };
+  }
+
+  const scoreByQuestion = new Map(state.anxietyResponses.map((r) => [r.questionId, r.score]));
+  const scoreFor = (factor: AnxietyFactor) =>
+    ANXIETY_QUESTIONS.filter((q) => q.factor === factor).reduce((sum, q) => sum + (scoreByQuestion.get(q.id) ?? 0), 0);
+
+  const numericalScore = scoreFor("numerical");
+  const situationalScore = scoreFor("situational");
+  const overallScore = numericalScore + situationalScore;
+
+  const ratio = overallScore / maxScore;
+  const level: AnxietyLevel = ratio >= 0.72 ? "elevated" : ratio >= 0.5 ? "moderate" : "low";
+
+  return { answered: true, overallScore, maxScore, level, numericalScore, situationalScore, factorMax };
 }
 
 export function synthesizeReport(
@@ -211,7 +228,6 @@ export function synthesizeReport(
   const summary = {
     mastered: topics.filter((t) => t.tag === "mastered").length,
     skillGap: topics.filter((t) => t.tag === "skill_gap").length,
-    anxietyFlagged: topics.filter((t) => t.tag === "anxiety_flagged").length,
     proceduralNotConceptual: topics.filter((t) => t.tag === "procedural_not_conceptual").length,
     total: topics.length,
   };
@@ -229,6 +245,7 @@ export function synthesizeReport(
   });
 
   const { headline, subheadline } = buildHeadline(childName, topics);
+  const mathAnxiety = computeMathAnxiety(state);
 
   const startedAt = new Date(assessedAt).getTime();
   const durationMinutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
@@ -244,10 +261,10 @@ export function synthesizeReport(
     summary,
     bloomByStrand,
     topics,
+    mathAnxiety,
     glossary: [
       { tag: "skill_gap", label: TAG_LABEL.skill_gap, description: "A genuine prerequisite is missing and should be retaught — usually resolved by reteaching, not more drilling of the same kind." },
       { tag: "procedural_not_conceptual", label: TAG_LABEL.procedural_not_conceptual, description: "The method is memorized but not understood — usually resolved with visual/hands-on practice rather than more drilling." },
-      { tag: "anxiety_flagged", label: TAG_LABEL.anxiety_flagged, description: "The underlying skill is present but performance drops specifically under word-problem or evaluative framing — usually resolved with confidence-building, not reteaching." },
     ],
   };
 }

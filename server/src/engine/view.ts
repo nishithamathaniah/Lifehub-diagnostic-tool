@@ -46,10 +46,6 @@ export function buildBreadcrumb(topicId: string | null, state: SessionState): st
   if (!topicId) return "Warm-up";
   const topic = getTopic(topicId);
   const t = state.topics[topicId];
-  const probing = t.pendingReframes.some((r) => !r.presented)
-    ? "Reframe probe"
-    : t.consecutiveStruggle > 0
-    ? "Probing sub-skill"
-    : "Assessing";
+  const probing = t.consecutiveStruggle > 0 ? "Probing sub-skill" : "Assessing";
   return `${topic.strand} → ${topic.name} → ${probing}`;
 }

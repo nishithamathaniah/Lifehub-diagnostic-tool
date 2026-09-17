@@ -8,7 +8,13 @@ import { SessionMap } from "../components/SessionMap";
 import { EngineTrace } from "../components/EngineTrace";
 import { PulseCheck } from "../components/PulseCheck";
 
-export function Assessment({ sessionId, onComplete }: { sessionId: string; onComplete: () => void }) {
+export function Assessment({
+  sessionId,
+  onSkillAssessmentDone,
+}: {
+  sessionId: string;
+  onSkillAssessmentDone: () => void;
+}) {
   const [question, setQuestion] = useState<NextQuestionResponse | null>(null);
   const [loading, setLoading] = useState(true);
   // Hidden by default — per the design doc, the CPA×Bloom grid / session map /
@@ -26,7 +32,9 @@ export function Assessment({ sessionId, onComplete }: { sessionId: string; onCom
     setLoading(true);
     const nq = await getNextQuestion(sessionId);
     if (nq.done) {
-      onComplete();
+      // The skill assessment (its own instrument) is over — the caller takes
+      // it from here to the separate anxiety questionnaire.
+      onSkillAssessmentDone();
       return;
     }
     setQuestion(nq);
@@ -75,38 +83,27 @@ export function Assessment({ sessionId, onComplete }: { sessionId: string; onCom
 
   const item = question.item;
 
-  const isReframe = question.isReframe;
-
   return (
     <div className="assess-grid">
-      <div className={`card ${isReframe ? "reframe-card" : ""}`}>
+      <div className="card">
         <div className="top-bar">
-          {isReframe ? (
-            <span className="reframe-pill">✨ Just for fun — not scored</span>
-          ) : (
-            <span className="question-counter">
-              Question {question.questionNumber} of ~{question.maxQuestions}
-            </span>
-          )}
+          <span className="question-counter">
+            Question {question.questionNumber} of ~{question.maxQuestions}
+          </span>
           <button className="btn btn-ghost" onClick={() => setShowPanel((v) => !v)}>
             {showPanel ? "Hide" : "Show"} engine internals
           </button>
         </div>
 
-        {!isReframe && <div className="breadcrumb">{question.breadcrumb}</div>}
+        <div className="breadcrumb">{question.breadcrumb}</div>
 
-        {!isReframe && (
-          <div className="tag-row">
-            <span className="tag tag-cpa">{item.cpa}</span>
-            <span className="tag tag-bloom">{item.bloom}</span>
-            {question.isProceduralCheck && <span className="tag tag-badge-procedural">Side-probe</span>}
-          </div>
-        )}
-
-        <div className="prompt-text">
-          {isReframe && <span className="reframe-lead-in">No rush at all — take your time on this one. </span>}
-          {item.prompt}
+        <div className="tag-row">
+          <span className="tag tag-cpa">{item.cpa}</span>
+          <span className="tag tag-bloom">{item.bloom}</span>
+          {question.isProceduralCheck && <span className="tag tag-badge-procedural">Side-probe</span>}
         </div>
+
+        <div className="prompt-text">{item.prompt}</div>
 
         {item.representation?.kind === "bar-model" && <BarModel spec={item.representation} />}
         {item.representation?.kind === "concrete" && <ConcreteObjects spec={item.representation} />}

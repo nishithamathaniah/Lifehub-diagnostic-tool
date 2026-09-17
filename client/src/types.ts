@@ -52,11 +52,11 @@ export interface SessionMapEntry {
 
 export interface NextQuestionResponse {
   done: boolean;
+  nextPhase?: "anxiety_questionnaire" | "completed";
   phase?: "warmup" | "assessment" | "completed";
   seq?: number;
   questionNumber?: number;
   maxQuestions?: number;
-  isReframe?: boolean;
   isProceduralCheck?: boolean;
   breadcrumb?: string;
   topicName?: string;
@@ -69,13 +69,29 @@ export interface NextQuestionResponse {
 export interface AnswerResponse {
   correct: boolean;
   outcome: string;
-  signal: { longPauseBeforeStart: boolean; quickGuess: boolean; lowHesitation: boolean };
   phase: string;
   totalQuestions: number;
   maxQuestions: number;
 }
 
-export type DiagnosisTag = "mastered" | "skill_gap" | "procedural_not_conceptual" | "anxiety_flagged" | "not_yet_reached";
+export interface AnxietyQuestion {
+  id: string;
+  text: string;
+}
+
+export type AnxietyLevel = "low" | "moderate" | "elevated";
+
+export interface MathAnxietyResult {
+  answered: boolean;
+  overallScore: number;
+  maxScore: number;
+  level: AnxietyLevel;
+  numericalScore: number;
+  situationalScore: number;
+  factorMax: number;
+}
+
+export type DiagnosisTag = "mastered" | "skill_gap" | "procedural_not_conceptual" | "not_yet_reached";
 
 export interface TopicDiagnosis {
   topicId: string;
@@ -96,8 +112,9 @@ export interface ReportData {
   durationMinutes: number;
   headline: string;
   subheadline: string;
-  summary: { mastered: number; skillGap: number; anxietyFlagged: number; proceduralNotConceptual: number; total: number };
+  summary: { mastered: number; skillGap: number; proceduralNotConceptual: number; total: number };
   bloomByStrand: { strand: string; assessed: boolean; deepest: BloomLevel | null }[];
   topics: TopicDiagnosis[];
+  mathAnxiety: MathAnxietyResult;
   glossary: { tag: string; label: string; description: string }[];
 }

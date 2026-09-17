@@ -9,11 +9,11 @@ import {
 } from "./sessionStore.js";
 import { selectNextQuestion, applyOutcome } from "./engine/skillEngine.js";
 import { readSignal } from "./engine/signalEngine.js";
-import { sanitizeItemForClient, getItemById } from "./itemBank/index.js";
+import { sanitizeItemForClient, getItemById, getTopic } from "./itemBank/index.js";
+import { ANXIETY_QUESTIONS } from "./itemBank/anxietyQuestionnaire.js";
 import { logTrace } from "./engine/state.js";
 import { buildGrid, buildSessionMap, buildBreadcrumb } from "./engine/view.js";
 import { synthesizeReport } from "./engine/synthesis.js";
-import { getTopic } from "./itemBank/index.js";
 
 export const router = Router();
 
@@ -39,9 +39,12 @@ router.get("/sessions/:id/next-question", async (req, res) => {
   if (!state.pendingQuestion) {
     const next = selectNextQuestion(state);
     if (!next) {
-      state.phase = "completed";
-      await saveSessionState(sessionId, state, "completed");
-      return res.json({ done: true });
+      // The skill assessment (its own instrument) is done. The anxiety
+      // questionnaire is a separate instrument administered next, not
+      // interleaved with it — see anxietyQuestionnaire.ts for why.
+      state.phase = "anxiety_questionnaire";
+      await saveSessionState(sessionId, state);
+      return res.json({ done: true, nextPhase: "anxiety_questionnaire" });
     }
     state.seqCounter += 1;
     state.pendingQuestion = {
@@ -50,8 +53,6 @@ router.get("/sessions/:id/next-question", async (req, res) => {
       topicId: next.item.topicId,
       cpa: next.item.cpa,
       bloom: next.item.bloom,
-      isReframe: next.isReframe,
-      reframeOfSeq: next.reframeOfSeq,
       isProceduralCheck: next.isProceduralCheck,
       clientItem: sanitizeItemForClient(next.item),
       shownAtServerMs: Date.now(),
@@ -71,7 +72,6 @@ router.get("/sessions/:id/next-question", async (req, res) => {
     // warm-up, since that counter only advances once real scoring starts.
     questionNumber: pq.seq,
     maxQuestions: state.maxQuestions,
-    isReframe: pq.isReframe,
     isProceduralCheck: pq.isProceduralCheck,
     breadcrumb: buildBreadcrumb(topicIdForView, state),
     topicName: topicIdForView ? getTopic(topicIdForView).name : "Warm-up",
@@ -105,7 +105,7 @@ router.post("/sessions/:id/answer", async (req, res) => {
     answerChanges: Number(answerChanges) || 0,
   });
 
-  const responseRow = await insertResponse({
+  await insertResponse({
     session_id: sessionId,
     seq: pq.seq,
     topic_id: pq.topicId,
@@ -119,8 +119,8 @@ router.post("/sessions/:id/answer", async (req, res) => {
     solving_duration_ms: signal.solvingDurationMs,
     answer_changes: Number(answerChanges) || 0,
     pulse: typeof pulse === "string" ? pulse : null,
-    is_reframe: pq.isReframe ? 1 : 0,
-    reframe_of_seq: pq.reframeOfSeq,
+    is_reframe: 0,
+    reframe_of_seq: null,
     is_procedural_check: pq.isProceduralCheck ? 1 : 0,
     outcome: null,
   });
@@ -139,8 +139,6 @@ router.post("/sessions/:id/answer", async (req, res) => {
       cpa: pq.cpa,
       bloom: pq.bloom,
       correct,
-      isReframe: pq.isReframe,
-      reframeOfSeq: pq.reframeOfSeq,
       isProceduralCheck: pq.isProceduralCheck,
       seq: pq.seq,
     });
@@ -152,11 +150,52 @@ router.post("/sessions/:id/answer", async (req, res) => {
   res.json({
     correct,
     outcome: loopOutcome,
-    signal: { longPauseBeforeStart: signal.longPauseBeforeStart, quickGuess: signal.quickGuess, lowHesitation: signal.lowHesitation },
     phase: state.phase,
     totalQuestions: state.totalQuestions,
     maxQuestions: state.maxQuestions,
   });
+});
+
+// --- Anxiety questionnaire: a separate instrument, administered after the
+// skill assessment finishes. Not adaptive — all questions are fetched and
+// answered together, like the standalone self-report scales it's adapted from.
+
+router.get("/sessions/:id/anxiety-questions", async (req, res) => {
+  const sessionId = req.params.id;
+  try {
+    await getSessionState(sessionId);
+  } catch {
+    return res.status(404).json({ error: "session not found" });
+  }
+  res.json({ questions: ANXIETY_QUESTIONS.map((q) => ({ id: q.id, text: q.text })) });
+});
+
+router.post("/sessions/:id/anxiety-answers", async (req, res) => {
+  const sessionId = req.params.id;
+  let state;
+  try {
+    state = await getSessionState(sessionId);
+  } catch {
+    return res.status(404).json({ error: "session not found" });
+  }
+
+  const { responses } = req.body ?? {};
+  if (!Array.isArray(responses)) return res.status(400).json({ error: "responses array is required" });
+
+  const validIds = new Set(ANXIETY_QUESTIONS.map((q) => q.id));
+  const cleaned = responses
+    .filter((r: unknown): r is { questionId: string; score: number } => {
+      const rec = r as { questionId?: unknown; score?: unknown };
+      return typeof rec?.questionId === "string" && validIds.has(rec.questionId) && [1, 2, 3].includes(Number(rec?.score));
+    })
+    .map((r) => ({ questionId: r.questionId, score: Number(r.score) }));
+
+  state.anxietyResponses = cleaned;
+  state.phase = "completed";
+  logTrace(state, `Anxiety questionnaire complete (${cleaned.length}/${ANXIETY_QUESTIONS.length} answered).`);
+  await saveSessionState(sessionId, state, "completed");
+
+  res.json({ ok: true });
 });
 
 router.get("/sessions/:id/report", async (req, res) => {

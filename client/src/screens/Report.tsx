@@ -14,9 +14,10 @@ const TAG_LABEL: Record<string, string> = {
   mastered: "Mastered",
   skill_gap: "Skill gap",
   procedural_not_conceptual: "Procedural, not conceptual",
-  anxiety_flagged: "Anxiety-flagged",
   not_yet_reached: "Not yet reached",
 };
+
+const ANXIETY_LEVEL_LABEL: Record<string, string> = { low: "Low", moderate: "Moderate", elevated: "Elevated" };
 
 export function Report({ sessionId }: { sessionId: string }) {
   const [report, setReport] = useState<ReportData | null>(null);
@@ -70,10 +71,6 @@ export function Report({ sessionId }: { sessionId: string }) {
           <div className="summary-card procedural">
             <span>Procedural, not conceptual</span>
             <span className="num">{report.summary.proceduralNotConceptual} topic</span>
-          </div>
-          <div className="summary-card anxiety">
-            <span>Anxiety-flagged</span>
-            <span className="num">{report.summary.anxietyFlagged} topic</span>
           </div>
         </div>
       </div>
@@ -146,6 +143,52 @@ export function Report({ sessionId }: { sessionId: string }) {
           </div>
         </>
       )}
+
+      <div className="panel-title" style={{ marginBottom: 10 }}>
+        Math Confidence Check
+      </div>
+      <div className="card anxiety-report-card">
+        <p style={{ marginTop: 0 }}>
+          This is a <b>separate questionnaire</b> {report.childName} answered directly about how math makes them
+          feel — it is not calculated or inferred from their performance on the skill assessment above. The two
+          are reported side by side on purpose: read them together, not as one combined score.
+        </p>
+        {report.mathAnxiety.answered ? (
+          <>
+            <div className="anxiety-level-row">
+              <span>Overall</span>
+              <span className={`dx-pill anxiety-level-${report.mathAnxiety.level}`}>
+                {ANXIETY_LEVEL_LABEL[report.mathAnxiety.level]}
+              </span>
+            </div>
+            <div className="anxiety-factor-row">
+              <span className="anxiety-factor-label">Worry about the numbers/steps themselves</span>
+              <div className="anxiety-factor-track">
+                <div
+                  className="anxiety-factor-fill"
+                  style={{ width: `${(report.mathAnxiety.numericalScore / report.mathAnxiety.factorMax) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div className="anxiety-factor-row">
+              <span className="anxiety-factor-label">Worry about being tested or watched</span>
+              <div className="anxiety-factor-track">
+                <div
+                  className="anxiety-factor-fill"
+                  style={{ width: `${(report.mathAnxiety.situationalScore / report.mathAnxiety.factorMax) * 100}%` }}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="topic-sub">This questionnaire wasn't completed this session.</p>
+        )}
+        <p className="topic-sub" style={{ marginBottom: 0 }}>
+          Wording is adapted from the Scale for Early Mathematics Anxiety (SEMA), a published instrument validated
+          for grades 3–6. The Low/Moderate/Elevated bands here are our own reasonable split of the score range, not
+          official published cutoffs — treat this as a helpful read, not a clinical diagnosis.
+        </p>
+      </div>
 
       <div className="glossary-box">
         <b>How to read this report:</b>{" "}

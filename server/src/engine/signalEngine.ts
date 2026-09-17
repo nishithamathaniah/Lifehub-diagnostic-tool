@@ -1,10 +1,19 @@
 /**
- * Signal Engine — passive. It never decides what to ask; it only reads timing
- * and interaction metadata off a response and turns it into behavioural flags
- * that the Skill Engine and the synthesis layer consume.
+ * Signal Engine — passive. It never decides what to ask, and (as of this
+ * version) it no longer classifies timing into "anxious-looking" behavioural
+ * flags either. There is no published, validated threshold for what counts
+ * as a suspiciously long pause or a "quick guess" during a child's math
+ * assessment — the literature on response-time and math anxiety is mixed
+ * (some studies find anxious students respond slower, others find anxiety
+ * affects accuracy but not response time at all), so inventing a specific
+ * millisecond cutoff and treating it as a diagnostic signal isn't
+ * defensible. See README for the switch to a separate, validated-style
+ * self-report questionnaire (anxietyQuestionnaire.ts) as the actual anxiety
+ * measure.
  *
- * Timings arrive as client-measured durations (not absolute timestamps) so the
- * classification never depends on client/server clock sync.
+ * This still records the raw timing per response — it's useful data for
+ * future analysis once we have real pilot sessions — it just doesn't
+ * classify or act on it.
  */
 
 export interface RawTiming {
@@ -13,35 +22,10 @@ export interface RawTiming {
   answerChanges: number;
 }
 
-export interface SignalReading {
-  hesitationBeforeStartMs: number;
-  solvingDurationMs: number;
-  longPauseBeforeStart: boolean; // avoidance-shaped: stalling before engaging at all
-  quickGuess: boolean; // suspiciously fast full response — escape behaviour
-  manyAnswerChanges: boolean;
-  // Behavioural signal only — does NOT gate topic progress (that's correctness
-  // alone). Feeds the reframe-probe/anxiety detection and the report's evidence.
-  lowHesitation: boolean;
-}
-
-const LONG_PAUSE_BEFORE_START_MS = 7000;
-const QUICK_GUESS_TOTAL_MS = 2000;
-const MANY_ANSWER_CHANGES = 2;
-
-export function readSignal(t: RawTiming): SignalReading {
-  const totalMs = t.hesitationBeforeStartMs + t.solvingDurationMs;
-  const longPauseBeforeStart = t.hesitationBeforeStartMs >= LONG_PAUSE_BEFORE_START_MS;
-  const quickGuess = totalMs <= QUICK_GUESS_TOTAL_MS;
-  const manyAnswerChanges = t.answerChanges >= MANY_ANSWER_CHANGES;
-
-  const lowHesitation = !longPauseBeforeStart && !manyAnswerChanges;
-
+export function readSignal(t: RawTiming): RawTiming {
   return {
-    hesitationBeforeStartMs: t.hesitationBeforeStartMs,
-    solvingDurationMs: t.solvingDurationMs,
-    longPauseBeforeStart,
-    quickGuess,
-    manyAnswerChanges,
-    lowHesitation,
+    hesitationBeforeStartMs: Math.max(0, t.hesitationBeforeStartMs),
+    solvingDurationMs: Math.max(0, t.solvingDurationMs),
+    answerChanges: Math.max(0, t.answerChanges),
   };
 }

@@ -9,8 +9,6 @@ function practiceMessage(t: TopicDiagnosis): string {
       return `Let's go back and practice ${t.name} a bit more with your teacher or a grown-up. Getting this one solid will make the next topics much easier.`;
     case "procedural_not_conceptual":
       return `You're really good at solving ${t.name} with numbers! Next, let's practice drawing it too (like a picture or a bar model) — that helps you understand it even deeper.`;
-    case "anxiety_flagged":
-      return `You actually know ${t.name} really well! It just felt extra tricky in the moment. Try it again when you're relaxed and not rushing — you've got this.`;
     default:
       return `Let's keep practicing ${t.name}.`;
   }
@@ -18,9 +16,7 @@ function practiceMessage(t: TopicDiagnosis): string {
 
 export function ChildSummary({ report, childName }: { report: ReportData; childName: string }) {
   const mastered = report.topics.filter((t) => t.tag === "mastered");
-  const toPractice = report.topics.filter(
-    (t) => t.tag === "skill_gap" || t.tag === "procedural_not_conceptual" || t.tag === "anxiety_flagged"
-  );
+  const toPractice = report.topics.filter((t) => t.tag === "skill_gap" || t.tag === "procedural_not_conceptual");
 
   return (
     <div className="child-summary">
