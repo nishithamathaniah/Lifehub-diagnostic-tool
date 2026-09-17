@@ -46,7 +46,7 @@ export function ConcreteObjects({ spec }: { spec: ConcreteSpec }) {
       {remainder > 0 && (
         <div className="concrete-remainder">
           <div className="icons">{spec.icon.repeat(remainder)}</div>
-          <div className="glabel">left over — not yet split</div>
+          <div className="glabel">extra — doesn't divide evenly among them</div>
         </div>
       )}
     </div>

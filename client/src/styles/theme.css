@@ -165,8 +165,17 @@ button {
 }
 .tag-cpa { background: #ddeae5; color: var(--deep-teal-dark); }
 .tag-bloom { background: var(--tan); color: #6b5a2f; }
-.tag-badge-reframe { background: #fde8db; color: var(--warm-amber); }
 .tag-badge-procedural { background: #e7e3f5; color: var(--muted-violet); }
+
+.reframe-banner {
+  background: #fdf3e8;
+  border: 1.5px dashed var(--warm-amber);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  color: #a5661c;
+  margin-bottom: 12px;
+}
 
 .prompt-text {
   font-family: var(--font-serif);

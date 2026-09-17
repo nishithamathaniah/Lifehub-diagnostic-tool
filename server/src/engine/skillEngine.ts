@@ -162,7 +162,12 @@ export function applyOutcome(state: SessionState, input: OutcomeInput): LoopOutc
 
   const atFrontier = input.cpa === t.frontierCpa && input.bloom === t.frontierBloom;
 
-  if (input.correct && input.lowHesitation) {
+  // Progress is gated on correctness alone — a right answer that took a
+  // moment to think through still counts as cleared. Hesitation is real
+  // signal (it's what the reframe probe and the report's evidence use),
+  // but it must never re-ask something the child already got right, or
+  // "I answered correctly" stops meaning anything to them.
+  if (input.correct) {
     t.cellStatus[cellId({ cpa: input.cpa, bloom: input.bloom })] = "cleared";
 
     if (!atFrontier) {

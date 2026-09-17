@@ -88,10 +88,14 @@ export function Assessment({ sessionId, onComplete }: { sessionId: string; onCom
         </div>
 
         <div className="breadcrumb">{question.breadcrumb}</div>
+
+        {question.isReframe && (
+          <div className="reframe-banner">🌤️ No pressure — just curious how this one feels now. Take your time.</div>
+        )}
+
         <div className="tag-row">
           <span className="tag tag-cpa">{item.cpa}</span>
           <span className="tag tag-bloom">{item.bloom}</span>
-          {question.isReframe && <span className="tag tag-badge-reframe">Reframe · untimed</span>}
           {question.isProceduralCheck && <span className="tag tag-badge-procedural">Side-probe</span>}
         </div>
 
