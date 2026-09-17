@@ -167,14 +167,25 @@ button {
 .tag-bloom { background: var(--tan); color: #6b5a2f; }
 .tag-badge-procedural { background: #e7e3f5; color: var(--muted-violet); }
 
-.reframe-banner {
-  background: #fdf3e8;
+.reframe-card {
+  background: linear-gradient(160deg, #fdf3e8, #fffdf9);
   border: 1.5px dashed var(--warm-amber);
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 0.88rem;
+}
+.reframe-pill {
+  background: #fde8db;
   color: #a5661c;
-  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+.reframe-lead-in {
+  color: #a5661c;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
 }
 
 .prompt-text {

@@ -75,31 +75,38 @@ export function Assessment({ sessionId, onComplete }: { sessionId: string; onCom
 
   const item = question.item;
 
+  const isReframe = question.isReframe;
+
   return (
     <div className="assess-grid">
-      <div className="card">
+      <div className={`card ${isReframe ? "reframe-card" : ""}`}>
         <div className="top-bar">
-          <span className="question-counter">
-            Question {question.questionNumber} of ~{question.maxQuestions}
-          </span>
+          {isReframe ? (
+            <span className="reframe-pill">✨ Just for fun — not scored</span>
+          ) : (
+            <span className="question-counter">
+              Question {question.questionNumber} of ~{question.maxQuestions}
+            </span>
+          )}
           <button className="btn btn-ghost" onClick={() => setShowPanel((v) => !v)}>
             {showPanel ? "Hide" : "Show"} engine internals
           </button>
         </div>
 
-        <div className="breadcrumb">{question.breadcrumb}</div>
+        {!isReframe && <div className="breadcrumb">{question.breadcrumb}</div>}
 
-        {question.isReframe && (
-          <div className="reframe-banner">🌤️ No pressure — just curious how this one feels now. Take your time.</div>
+        {!isReframe && (
+          <div className="tag-row">
+            <span className="tag tag-cpa">{item.cpa}</span>
+            <span className="tag tag-bloom">{item.bloom}</span>
+            {question.isProceduralCheck && <span className="tag tag-badge-procedural">Side-probe</span>}
+          </div>
         )}
 
-        <div className="tag-row">
-          <span className="tag tag-cpa">{item.cpa}</span>
-          <span className="tag tag-bloom">{item.bloom}</span>
-          {question.isProceduralCheck && <span className="tag tag-badge-procedural">Side-probe</span>}
+        <div className="prompt-text">
+          {isReframe && <span className="reframe-lead-in">No rush at all — take your time on this one. </span>}
+          {item.prompt}
         </div>
-
-        <div className="prompt-text">{item.prompt}</div>
 
         {item.representation?.kind === "bar-model" && <BarModel spec={item.representation} />}
         {item.representation?.kind === "concrete" && <ConcreteObjects spec={item.representation} />}
