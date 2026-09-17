@@ -23,6 +23,11 @@ app.use(async (_req, res, next) => {
 app.use("/api", router);
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+// This is an API-only deployment — the child/parent-facing UI is the
+// separate client app. A friendly landing message here just confirms the
+// server is up, rather than leaving Express's default 404 at "/".
+app.get("/", (_req, res) => res.json({ ok: true, service: "lifehub-diagnostic-tool-server", health: "/api/health" }));
+
 // Also exported as default: if Vercel's Root Directory ends up pointing at
 // the repo root instead of server/, its zero-config detection can end up
 // invoking this file directly instead of api/index.ts, and it requires a
